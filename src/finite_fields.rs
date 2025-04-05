@@ -87,6 +87,8 @@ impl Add for FieldElement {
     }
 }
 
+/// Implements subtraction for FieldElement references, computing (a - b) mod p efficiently.
+/// Avoids cloning large BigInts by operating on references.
 impl<'a> Sub<&'a FieldElement> for &FieldElement {
     type Output = FieldElement;
     fn sub(self, rhs: &'a FieldElement) -> FieldElement {
@@ -98,10 +100,20 @@ impl<'a> Sub<&'a FieldElement> for &FieldElement {
     }
 }
 
+/// Implements subtraction for owned FieldElements, delegating to the reference version.
+/// Consumes the arguments but borrows them internally for efficiency.
+impl Sub for FieldElement {
+    type Output = FieldElement;
+    fn sub(self, rhs: FieldElement) -> FieldElement {
+        &self - &rhs
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// Test standard creation of FieldElement with border checking
     #[test]
     fn test_new_valid() {
         let fe = FieldElement::new(BigInt::from(42)).unwrap();
@@ -217,5 +229,19 @@ mod tests {
         let b = FieldElement::new(BigInt::from(100)).unwrap();
         let c = &a - &b;
         assert_eq!(*c.num(), BigInt::from(150));
+    }
+
+    /// Tests reference subtraction with wrap-around (a - b < 0).
+    #[test]
+    fn test_sub_ref_wraparound() {
+        let a = FieldElement::new(BigInt::from(4)).unwrap();
+        let b = FieldElement::new(BigInt::from(5)).unwrap();
+        let c = &a - &b; // 4 - 5 = (p - 1) mod p
+        let result = BigInt::parse_bytes(
+            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
+            16,
+        )
+        .unwrap(); // (p-1)
+        assert_eq!(*c.num(), result);
     }
 }
