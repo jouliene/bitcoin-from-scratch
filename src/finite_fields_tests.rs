@@ -358,3 +358,79 @@ fn test_div_by_zero() {
     let b = FieldElement::zero();
     let _ = &a / &b; // Should panic with "Division by zero"
 }
+
+//---------------------
+// Scalar Multiplication Tests (coeff * fe)
+//---------------------
+
+#[test]
+fn test_scalar_mul_no_wraparound() {
+    // Test scalar multiplication without wraparound: 3 * 5 = 15.
+    let fe = FieldElement::new(BigInt::from(5)).unwrap();
+    let coeff = BigInt::from(3);
+    let result = coeff * &fe;
+    assert_eq!(*result.num(), BigInt::from(15));
+}
+
+#[test]
+fn test_scalar_mul_with_wraparound() {
+    // Test scalar multiplication causing wraparound: p * 2 ≡ 0 mod p.
+    let fe = FieldElement::new(BigInt::from(2)).unwrap();
+    let coeff = FieldElement::prime().clone();
+    let result = coeff * &fe;
+    assert_eq!(*result.num(), BigInt::zero());
+}
+
+#[test]
+fn test_scalar_mul_by_zero() {
+    // Test scalar multiplication by zero: 0 * (p - 1) = 0.
+    let fe = FieldElement::new(
+        BigInt::parse_bytes(
+            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
+            16,
+        )
+            .unwrap(),
+    )
+        .unwrap(); // p - 1
+    let coeff = BigInt::zero();
+    let result = coeff * &fe;
+    assert_eq!(*result.num(), BigInt::zero());
+}
+
+//---------------------
+// Exponentiation Tests
+//---------------------
+
+#[test]
+fn test_pow_positive() {
+    // Test positive exponent: 3^2 = 9.
+    let fe = FieldElement::new(BigInt::from(3)).unwrap();
+    let result = fe.pow(BigInt::from(2));
+    assert_eq!(*result.num(), BigInt::from(9));
+}
+
+#[test]
+fn test_pow_zero() {
+    // Test zero exponent: a^0 = 1 for non-zero a.
+    let fe = FieldElement::new(BigInt::from(42)).unwrap();
+    let result = fe.pow(BigInt::zero());
+    assert_eq!(*result.num(), BigInt::one());
+}
+
+#[test]
+fn test_pow_negative() {
+    // Test negative exponent: a^(-1) should be the inverse, so a * a^(-1) = 1.
+    let fe = FieldElement::new(BigInt::from(5)).unwrap();
+    let inv = fe.pow(BigInt::from(-1));
+    let product = &fe * &inv;
+    assert_eq!(*product.num(), BigInt::one());
+}
+
+#[test]
+fn test_pow_fermat() {
+    // Test Fermat's Little Theorem: a^(p-1) ≡ 1 mod p for non-zero a.
+    let fe = FieldElement::new(BigInt::from(3)).unwrap();
+    let p_minus_one = FieldElement::prime() - BigInt::one();
+    let result = fe.pow(p_minus_one);
+    assert_eq!(*result.num(), BigInt::one());
+}

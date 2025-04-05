@@ -63,6 +63,22 @@ impl FieldElement {
         let result = self.num.modpow(&exponent, FieldElement::prime());
         FieldElement { num: result }
     }
+
+    /// Computes exponentiation: a^n mod p, where n is reduced modulo (p-1) per Fermat's Little Theorem.
+    /// This ensures a^(p-1) ≡ 1 mod p for non-zero a, and handles negative exponents correctly.
+    pub fn pow(&self, exponent: BigInt) -> Self {
+        let p_minus_one = Self::prime() - BigInt::one();
+        if exponent.is_negative() {
+            // For negative exponents, compute the inverse raised to the positive exponent
+            let abs_exp = -exponent;
+            let reduced_exp = abs_exp % &p_minus_one;
+            self.inverse().pow(reduced_exp)
+        } else {
+            let reduced_exp = exponent % &p_minus_one;
+            let num = self.num.modpow(&reduced_exp, Self::prime());
+            FieldElement { num }
+        }
+    }
 }
 
 /// Formats a `FieldElement` as a hex string with the modulus, e.g., "FieldElement_0x..._(mod 0x...)".
@@ -136,6 +152,16 @@ impl Mul for FieldElement {
         &self * &rhs
     }
 }
+
+/// Implements scalar multiplication for `BigInt * FieldElement`, computing (coeff * a) mod p.
+impl Mul<&FieldElement> for BigInt {
+    type Output = FieldElement;
+    fn mul(self, rhs: &FieldElement) -> FieldElement {
+        let num = (self * &rhs.num) % FieldElement::prime();
+        FieldElement { num }
+    }
+}
+
 
 /// Implements division for references to `FieldElement`, computing a / b = a * b^(-1) mod p.
 /// Suppresses Clippy warning as the multiplication with inverse is intentional and correct.
