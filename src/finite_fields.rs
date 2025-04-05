@@ -244,4 +244,46 @@ mod tests {
         .unwrap(); // (p-1)
         assert_eq!(*c.num(), result);
     }
+
+    /// Tests owned subtraction without wrap-around (a - b > 0).
+    #[test]
+    fn test_sub_owned_normal() {
+        let a = FieldElement::new(BigInt::from(270)).unwrap();
+        let b = FieldElement::new(BigInt::from(130)).unwrap();
+        let c = a - b;
+        assert_eq!(*c.num(), BigInt::from(140));
+    }
+
+    /// Tests owned subtraction with wrap-around (a - b < 0).
+    #[test]
+    fn test_sub_owned_wraparound() {
+        let a = FieldElement::new(BigInt::from(4)).unwrap();
+        let b = FieldElement::new(BigInt::from(5)).unwrap();
+        let c = a - b; // 4 - 5 = (p - 1) mod p
+        let result = BigInt::parse_bytes(
+            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
+            16,
+        )
+        .unwrap(); // (p-1)
+        assert_eq!(*c.num(), result);
+    }
+
+    /// Tests that subtracting zero is an identity operation (a - 0 = a).
+    #[test]
+    fn test_sub_zero() {
+        let a = FieldElement::new(BigInt::from(42)).unwrap();
+        let zero = FieldElement::zero();
+        assert_eq!(&a - &zero, a);
+    }
+
+    /// Tests that subtraction is associative ((a - b) - c = (a - c) - b using references.
+    #[test]
+    fn test_sub_associative() {
+        let a = FieldElement::new(BigInt::from(10)).unwrap();
+        let b = FieldElement::new(BigInt::from(20)).unwrap();
+        let c = FieldElement::new(BigInt::from(30)).unwrap();
+        let left = &(&a - &b) - &c;
+        let right = &(&a - &c) - &b;
+        assert_eq!(left, right);
+    }
 }
