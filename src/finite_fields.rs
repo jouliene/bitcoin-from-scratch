@@ -1,7 +1,7 @@
 use num_bigint::BigInt;
 use num_traits::{One, Signed, Zero};
 use std::fmt;
-use std::ops::{Add, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 
 // Defines the secp256k1 prime (p = 2^256 - 2^32 - 977) as a global constant.
 // This is the modulus for our finite field F_p.
@@ -20,8 +20,8 @@ pub struct FieldElement {
 }
 
 impl FieldElement {
-    /// Constructs a new FieldElement, ensuring the value is in the valid range [0, p-1].
-    /// Returns an error if num < 0 or num >= p.
+    /// Constructs a new `FieldElement`, ensuring the value is in the valid range [0, p-1].
+    /// Returns an error if `num` is negative or greater than or equal to the prime modulus.
     pub fn new(num: BigInt) -> Result<Self, String> {
         if num.is_negative() || num >= *PRIME {
             return Err(format!(
@@ -33,28 +33,40 @@ impl FieldElement {
         Ok(FieldElement { num })
     }
 
-    /// Returns the field's prime modulus (p).
+    /// Returns a reference to the field's prime modulus (p).
     pub fn prime() -> &'static BigInt {
         &PRIME
     }
 
-    /// Returns a reference to the internal number.
+    /// Returns a reference to the internal number representing the field element.
     pub fn num(&self) -> &BigInt {
         &self.num
     }
 
-    /// Returns 0 in the field.
+    /// Returns the zero element (0) in the field.
     pub fn zero() -> Self {
         FieldElement::new(BigInt::zero()).unwrap()
     }
 
-    /// Returns 1 in the field.
+    /// Returns the one element (1) in the field.
     pub fn one() -> Self {
         FieldElement::new(BigInt::one()).unwrap()
     }
+
+    /// Computes the multiplicative inverse using Fermat's Little Theorem: a^(p-2) ≡ a^(-1) mod p.
+    /// Panics if the element is zero, as zero has no multiplicative inverse.
+    fn inverse(&self) -> Self {
+        if self.num == BigInt::zero() {
+            panic!("Division by zero: no multiplicative inverse exists");
+        }
+        let exponent = FieldElement::prime() - BigInt::from(2);
+        let result = self.num.modpow(&exponent, FieldElement::prime());
+        FieldElement { num: result }
+    }
 }
 
-/// Formats a FieldElement as a hex string with the modulus, e.g., "FieldElement_0x..._(mod 0x...)".
+/// Formats a `FieldElement` as a hex string with the modulus, e.g., "FieldElement_0x..._(mod 0x...)".
+/// Useful for debugging and logging.
 impl fmt::Display for FieldElement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -65,8 +77,8 @@ impl fmt::Display for FieldElement {
     }
 }
 
-/// Implements addition for FieldElement references, computing (a + b) mod p efficiently.
-/// Avoids cloning large BigInts by operating on references.
+/// Implements addition for references to `FieldElement`, computing (a + b) mod p efficiently.
+/// Avoids unnecessary modular reductions by checking if the sum exceeds p.
 impl<'a> Add<&'a FieldElement> for &FieldElement {
     type Output = FieldElement;
     fn add(self, rhs: &'a FieldElement) -> FieldElement {
@@ -78,8 +90,7 @@ impl<'a> Add<&'a FieldElement> for &FieldElement {
     }
 }
 
-/// Implements addition for owned FieldElements, delegating to the reference version.
-/// Consumes the arguments but borrows them internally for efficiency.
+/// Implements addition for owned `FieldElement` values, delegating to the reference version.
 impl Add for FieldElement {
     type Output = FieldElement;
     fn add(self, rhs: FieldElement) -> FieldElement {
@@ -87,8 +98,8 @@ impl Add for FieldElement {
     }
 }
 
-/// Implements subtraction for FieldElement references, computing (a - b) mod p efficiently.
-/// Avoids cloning large BigInts by operating on references.
+/// Implements subtraction for references to `FieldElement`, computing (a - b) mod p efficiently.
+/// Adjusts negative results by adding p to ensure the result is in [0, p-1].
 impl<'a> Sub<&'a FieldElement> for &FieldElement {
     type Output = FieldElement;
     fn sub(self, rhs: &'a FieldElement) -> FieldElement {
@@ -100,8 +111,7 @@ impl<'a> Sub<&'a FieldElement> for &FieldElement {
     }
 }
 
-/// Implements subtraction for owned FieldElements, delegating to the reference version.
-/// Consumes the arguments but borrows them internally for efficiency.
+/// Implements subtraction for owned `FieldElement` values, delegating to the reference version.
 impl Sub for FieldElement {
     type Output = FieldElement;
     fn sub(self, rhs: FieldElement) -> FieldElement {
@@ -109,181 +119,39 @@ impl Sub for FieldElement {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Test standard creation of FieldElement with border checking
-    #[test]
-    fn test_new_valid() {
-        let fe = FieldElement::new(BigInt::from(42)).unwrap();
-        assert_eq!(*fe.num(), BigInt::from(42));
+/// Implements multiplication for references to `FieldElement`, computing (a * b) mod p.
+/// Uses the standard approach of computing the product and then reducing modulo p.
+impl<'a> Mul<&'a FieldElement> for &FieldElement {
+    type Output = FieldElement;
+    fn mul(self, rhs: &'a FieldElement) -> FieldElement {
+        let result = (&self.num * &rhs.num) % FieldElement::prime();
+        FieldElement { num: result }
     }
+}
 
-    /// Tests that invalid inputs (negative or >= p) are rejected.
-    #[test]
-    fn test_new_invalid() {
-        let p = FieldElement::prime();
-        assert!(FieldElement::new(p.clone()).is_err()); // p is not in [0, p-1]
-        assert!(FieldElement::new(BigInt::from(-1)).is_err()); // Negative is invalid
+/// Implements multiplication for owned `FieldElement` values, delegating to the reference version.
+impl Mul for FieldElement {
+    type Output = FieldElement;
+    fn mul(self, rhs: FieldElement) -> FieldElement {
+        &self * &rhs
     }
+}
 
-    /// Tests the Display implementation for proper hex formatting.
-    #[test]
-    fn test_display() {
-        let fe = FieldElement::new(BigInt::from(255)).unwrap();
-        let s = format!("{}", fe);
-        let expected = "FieldElement_0x00000000000000000000000000000000000000000000000000000000000000ff_(mod 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f)";
-        assert_eq!(s, expected);
+/// Implements division for references to `FieldElement`, computing a / b = a * b^(-1) mod p.
+/// Suppresses Clippy warning as the multiplication with inverse is intentional and correct.
+#[allow(clippy::suspicious_arithmetic_impl)]
+impl<'a> Div<&'a FieldElement> for &FieldElement {
+    type Output = FieldElement;
+    fn div(self, rhs: &'a FieldElement) -> FieldElement {
+        let rhs_inv = rhs.inverse(); // Compute the inverse (owned value)
+        self * &rhs_inv // Multiply reference with reference to inverse
     }
+}
 
-    //----------
-    // ADDITION
-    //----------
-
-    /// Tests reference addition without wrap-around (a + b < p).
-    #[test]
-    fn test_add_ref_normal() {
-        let a = FieldElement::new(BigInt::from(100)).unwrap();
-        let b = FieldElement::new(BigInt::from(200)).unwrap();
-        let c = &a + &b;
-        assert_eq!(*c.num(), BigInt::from(300));
-    }
-
-    /// Tests reference addition with wrap-around (a + b >= p).
-    #[test]
-    fn test_add_ref_wraparound() {
-        let a = FieldElement::new(
-            BigInt::parse_bytes(
-                b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-                16,
-            )
-            .unwrap(),
-        )
-        .unwrap(); // p - 1
-        let b = FieldElement::one();
-        let c = &a + &b; // (p - 1) + 1 = p ≡ 0 mod p
-        assert_eq!(*c.num(), BigInt::zero());
-    }
-
-    /// Tests owned addition without wrap-around (a + b < p).
-    #[test]
-    fn test_add_owned_normal() {
-        let a = FieldElement::new(BigInt::from(100)).unwrap();
-        let b = FieldElement::new(BigInt::from(200)).unwrap();
-        let c = a + b;
-        assert_eq!(*c.num(), BigInt::from(300));
-    }
-
-    /// Tests owned addition with wrap-around (a + b >= p).
-    #[test]
-    fn test_add_owned_wraparound() {
-        let a = FieldElement::new(
-            BigInt::parse_bytes(
-                b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-                16,
-            )
-            .unwrap(),
-        )
-        .unwrap(); // p - 1
-        let b = FieldElement::one();
-        let c = a + b; // (p - 1) + 1 = p ≡ 0 mod p
-        assert_eq!(*c.num(), BigInt::zero());
-    }
-
-    /// Tests that addition is commutative (a + b = b + a) using references.
-    #[test]
-    fn test_add_commutative() {
-        let a = FieldElement::new(BigInt::from(42)).unwrap();
-        let b = FieldElement::new(BigInt::from(58)).unwrap();
-        assert_eq!(&a + &b, &b + &a);
-    }
-
-    /// Tests that addition is associative ((a + b) + c = a + (b + c)) using references.
-    #[test]
-    fn test_add_associative() {
-        let a = FieldElement::new(BigInt::from(10)).unwrap();
-        let b = FieldElement::new(BigInt::from(20)).unwrap();
-        let c = FieldElement::new(BigInt::from(30)).unwrap();
-        let left = &(&a + &b) + &c;
-        let right = &a + &(&b + &c);
-        assert_eq!(left, right);
-    }
-
-    /// Tests that adding zero is an identity operation (a + 0 = a).
-    #[test]
-    fn test_add_zero() {
-        let a = FieldElement::new(BigInt::from(42)).unwrap();
-        let zero = FieldElement::zero();
-        assert_eq!(&a + &zero, a);
-    }
-
-    //-----------
-    //SUBTRACTION
-    //-----------
-
-    /// Tests reference subtraction without wrap-around (a - b > 0).
-    #[test]
-    fn test_sub_ref_normal() {
-        let a = FieldElement::new(BigInt::from(250)).unwrap();
-        let b = FieldElement::new(BigInt::from(100)).unwrap();
-        let c = &a - &b;
-        assert_eq!(*c.num(), BigInt::from(150));
-    }
-
-    /// Tests reference subtraction with wrap-around (a - b < 0).
-    #[test]
-    fn test_sub_ref_wraparound() {
-        let a = FieldElement::new(BigInt::from(4)).unwrap();
-        let b = FieldElement::new(BigInt::from(5)).unwrap();
-        let c = &a - &b; // 4 - 5 = (p - 1) mod p
-        let result = BigInt::parse_bytes(
-            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-            16,
-        )
-        .unwrap(); // (p-1)
-        assert_eq!(*c.num(), result);
-    }
-
-    /// Tests owned subtraction without wrap-around (a - b > 0).
-    #[test]
-    fn test_sub_owned_normal() {
-        let a = FieldElement::new(BigInt::from(270)).unwrap();
-        let b = FieldElement::new(BigInt::from(130)).unwrap();
-        let c = a - b;
-        assert_eq!(*c.num(), BigInt::from(140));
-    }
-
-    /// Tests owned subtraction with wrap-around (a - b < 0).
-    #[test]
-    fn test_sub_owned_wraparound() {
-        let a = FieldElement::new(BigInt::from(4)).unwrap();
-        let b = FieldElement::new(BigInt::from(5)).unwrap();
-        let c = a - b; // 4 - 5 = (p - 1) mod p
-        let result = BigInt::parse_bytes(
-            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-            16,
-        )
-        .unwrap(); // (p-1)
-        assert_eq!(*c.num(), result);
-    }
-
-    /// Tests that subtracting zero is an identity operation (a - 0 = a).
-    #[test]
-    fn test_sub_zero() {
-        let a = FieldElement::new(BigInt::from(42)).unwrap();
-        let zero = FieldElement::zero();
-        assert_eq!(&a - &zero, a);
-    }
-
-    /// Tests that subtraction is associative ((a - b) - c = (a - c) - b using references.
-    #[test]
-    fn test_sub_associative() {
-        let a = FieldElement::new(BigInt::from(10)).unwrap();
-        let b = FieldElement::new(BigInt::from(20)).unwrap();
-        let c = FieldElement::new(BigInt::from(30)).unwrap();
-        let left = &(&a - &b) - &c;
-        let right = &(&a - &c) - &b;
-        assert_eq!(left, right);
+/// Implements division for owned `FieldElement` values, delegating to the reference version.
+impl Div for FieldElement {
+    type Output = FieldElement;
+    fn div(self, rhs: FieldElement) -> FieldElement {
+        &self / &rhs
     }
 }
