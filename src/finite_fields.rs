@@ -162,7 +162,6 @@ impl Mul<&FieldElement> for BigInt {
     }
 }
 
-
 /// Implements division for references to `FieldElement`, computing a / b = a * b^(-1) mod p.
 /// Suppresses Clippy warning as the multiplication with inverse is intentional and correct.
 #[allow(clippy::suspicious_arithmetic_impl)]

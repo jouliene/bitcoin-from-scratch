@@ -53,9 +53,8 @@ fn test_eq() {
     let a = FieldElement::new(BigInt::from(5)).unwrap();
     let b = FieldElement::new(BigInt::from(5)).unwrap();
     let c = FieldElement::new(BigInt::from(6)).unwrap();
-
-    assert_eq!(a, b); // Check that a and b are equal since they have the same num (5)
-    assert_ne!(a, c); // Check that a and c are not equal since they have different nums (5 ≠ 6)
+    assert_eq!(a, b);
+    assert_ne!(a, c);
 }
 
 //---------------------
@@ -74,14 +73,9 @@ fn test_add_ref_no_wraparound() {
 #[test]
 fn test_add_ref_with_wraparound() {
     // Test addition causing wraparound: (p - 1) + 1 = p ≡ 0 mod p.
-    let p_minus_one = FieldElement::new(
-        BigInt::parse_bytes(
-            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-            16,
-        )
-        .unwrap(),
-    )
-    .unwrap(); // p - 1
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let num_bigint = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap();
+    let p_minus_one = FieldElement::new(num_bigint).unwrap(); // p - 1
     let one = FieldElement::one();
     let c = &p_minus_one + &one;
     assert_eq!(*c.num(), BigInt::zero());
@@ -99,14 +93,9 @@ fn test_add_owned_no_wraparound() {
 #[test]
 fn test_add_owned_with_wraparound() {
     // Test addition with owned values causing wraparound: (p - 1) + 1 = p ≡ 0 mod p.
-    let p_minus_one = FieldElement::new(
-        BigInt::parse_bytes(
-            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-            16,
-        )
-        .unwrap(),
-    )
-    .unwrap(); // p - 1
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let num_bigint = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap();
+    let p_minus_one = FieldElement::new(num_bigint).unwrap(); // p - 1
     let one = FieldElement::one();
     let c = p_minus_one + one;
     assert_eq!(*c.num(), BigInt::zero());
@@ -168,11 +157,8 @@ fn test_sub_ref_with_wraparound() {
     let a = FieldElement::new(BigInt::from(4)).unwrap();
     let b = FieldElement::new(BigInt::from(5)).unwrap();
     let c = &a - &b;
-    let expected = BigInt::parse_bytes(
-        b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-        16,
-    )
-    .unwrap(); // p - 1
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let expected = BigInt::parse_bytes(num_hex.as_bytes(),16).unwrap(); // p - 1
     assert_eq!(*c.num(), expected);
 }
 
@@ -191,11 +177,8 @@ fn test_sub_owned_with_wraparound() {
     let a = FieldElement::new(BigInt::from(4)).unwrap();
     let b = FieldElement::new(BigInt::from(5)).unwrap();
     let c = a - b;
-    let expected = BigInt::parse_bytes(
-        b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-        16,
-    )
-    .unwrap(); // p - 1
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let expected = BigInt::parse_bytes(num_hex.as_bytes(),16).unwrap(); // p - 1
     assert_eq!(*c.num(), expected);
 }
 
@@ -231,21 +214,13 @@ fn test_mul_ref_no_wraparound() {
 #[test]
 fn test_mul_ref_with_wraparound() {
     // Test multiplication causing wraparound: (p - 1) * 2 = 2p - 2 ≡ p - 2 mod p.
-    let p_minus_one = FieldElement::new(
-        BigInt::parse_bytes(
-            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-            16,
-        )
-        .unwrap(),
-    )
-    .unwrap(); // p - 1
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let num_bigint = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap();
+    let p_minus_one = FieldElement::new(num_bigint).unwrap(); // p - 1
     let two = FieldElement::new(BigInt::from(2)).unwrap();
     let c = &p_minus_one * &two;
-    let expected = BigInt::parse_bytes(
-        b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2d",
-        16,
-    )
-    .unwrap(); // p - 2
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2d";
+    let expected = BigInt::parse_bytes(num_hex.as_bytes(),16).unwrap(); // p - 2
     assert_eq!(*c.num(), expected);
 }
 
@@ -261,14 +236,9 @@ fn test_mul_owned_no_wraparound() {
 #[test]
 fn test_mul_owned_zero() {
     // Test multiplication by zero: (p - 1) * 0 = 0.
-    let p_minus_one = FieldElement::new(
-        BigInt::parse_bytes(
-            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-            16,
-        )
-        .unwrap(),
-    )
-    .unwrap(); // p - 1
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let num_bigint = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap();
+    let p_minus_one = FieldElement::new(num_bigint).unwrap(); // p - 1
     let zero = FieldElement::zero();
     let c = p_minus_one * zero;
     assert_eq!(*c.num(), BigInt::zero());
@@ -327,14 +297,9 @@ fn test_div_owned_normal() {
 fn test_div_ref_inverse() {
     // Test that dividing 1 by (p - 1) and multiplying back gives 1, verifying the inverse.
     let a = FieldElement::new(BigInt::from(1)).unwrap();
-    let b = FieldElement::new(
-        BigInt::parse_bytes(
-            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-            16,
-        )
-        .unwrap(),
-    )
-    .unwrap(); // p - 1
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let num_bigint = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap();
+    let b = FieldElement::new(num_bigint).unwrap(); // p - 1
     let c = &a / &b; // c = 1 / (p - 1)
     assert_eq!(*(&b * &c).num(), BigInt::one()); // b * c = (p - 1) * (1 / (p - 1)) = 1
 }
@@ -399,14 +364,9 @@ fn test_scalar_mul_with_wraparound() {
 #[test]
 fn test_scalar_mul_by_zero() {
     // Test scalar multiplication by zero: 0 * (p - 1) = 0.
-    let fe = FieldElement::new(
-        BigInt::parse_bytes(
-            b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
-            16,
-        )
-        .unwrap(),
-    )
-    .unwrap(); // p - 1
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let num_bigint = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap();
+    let fe = FieldElement::new(num_bigint).unwrap(); // p - 1
     let coeff = BigInt::zero();
     let result = coeff * &fe;
     assert_eq!(*result.num(), BigInt::zero());
