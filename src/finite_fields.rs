@@ -1,7 +1,7 @@
 use num_bigint::BigInt;
 use num_traits::{One, Signed, Zero};
 use std::fmt;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 // Defines the secp256k1 prime (p = 2^256 - 2^32 - 977) as a global constant.
 // This is the modulus for our finite field F_p.
@@ -45,12 +45,12 @@ impl FieldElement {
 
     /// Returns 0 in the field.
     pub fn zero() -> Self {
-        FieldElement::new(Zero::zero()).unwrap()
+        FieldElement::new(BigInt::zero()).unwrap()
     }
 
     /// Returns 1 in the field.
     pub fn one() -> Self {
-        FieldElement::new(One::one()).unwrap()
+        FieldElement::new(BigInt::one()).unwrap()
     }
 }
 
@@ -70,11 +70,11 @@ impl fmt::Display for FieldElement {
 impl<'a> Add<&'a FieldElement> for &FieldElement {
     type Output = FieldElement;
     fn add(self, rhs: &'a FieldElement) -> FieldElement {
-        let mut sum = &self.num + &rhs.num;
-        if sum >= *FieldElement::prime() {
-            sum -= FieldElement::prime();
+        let mut result = &self.num + &rhs.num;
+        if result >= *FieldElement::prime() {
+            result -= FieldElement::prime();
         }
-        FieldElement { num: sum }
+        FieldElement { num: result }
     }
 }
 
@@ -87,11 +87,21 @@ impl Add for FieldElement {
     }
 }
 
+impl<'a> Sub<&'a FieldElement> for &FieldElement {
+    type Output = FieldElement;
+    fn sub(self, rhs: &'a FieldElement) -> FieldElement {
+        let mut result = &self.num - &rhs.num;
+        if result < BigInt::zero() {
+            result += FieldElement::prime();
+        }
+        FieldElement { num: result }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Tests constructing a valid FieldElement.
     #[test]
     fn test_new_valid() {
         let fe = FieldElement::new(BigInt::from(42)).unwrap();
@@ -115,6 +125,10 @@ mod tests {
         assert_eq!(s, expected);
     }
 
+    //----------
+    // ADDITION
+    //----------
+
     /// Tests reference addition without wrap-around (a + b < p).
     #[test]
     fn test_add_ref_normal() {
@@ -137,7 +151,7 @@ mod tests {
         .unwrap(); // p - 1
         let b = FieldElement::one();
         let c = &a + &b; // (p - 1) + 1 = p ≡ 0 mod p
-        assert_eq!(*c.num(), Zero::zero());
+        assert_eq!(*c.num(), BigInt::zero());
     }
 
     /// Tests owned addition without wrap-around (a + b < p).
@@ -162,7 +176,7 @@ mod tests {
         .unwrap(); // p - 1
         let b = FieldElement::one();
         let c = a + b; // (p - 1) + 1 = p ≡ 0 mod p
-        assert_eq!(*c.num(), Zero::zero());
+        assert_eq!(*c.num(), BigInt::zero());
     }
 
     /// Tests that addition is commutative (a + b = b + a) using references.
@@ -190,5 +204,18 @@ mod tests {
         let a = FieldElement::new(BigInt::from(42)).unwrap();
         let zero = FieldElement::zero();
         assert_eq!(&a + &zero, a);
+    }
+
+    //-----------
+    //SUBTRACTION
+    //-----------
+
+    /// Tests reference subtraction without wrap-around (a - b > 0).
+    #[test]
+    fn test_sub_ref_normal() {
+        let a = FieldElement::new(BigInt::from(250)).unwrap();
+        let b = FieldElement::new(BigInt::from(100)).unwrap();
+        let c = &a - &b;
+        assert_eq!(*c.num(), BigInt::from(150));
     }
 }
