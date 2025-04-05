@@ -44,6 +44,21 @@ fn test_display() {
 }
 
 //---------------------
+// Equality Test
+//---------------------
+
+#[test]
+fn test_eq() {
+    // Test equality and inequality of FieldElement instances based on their num values.
+    let a = FieldElement::new(BigInt::from(5)).unwrap();
+    let b = FieldElement::new(BigInt::from(5)).unwrap();
+    let c = FieldElement::new(BigInt::from(6)).unwrap();
+
+    assert_eq!(a, b); // Check that a and b are equal since they have the same num (5)
+    assert_ne!(a, c); // Check that a and c are not equal since they have different nums (5 ≠ 6)
+}
+
+//---------------------
 // Addition Tests
 //---------------------
 
@@ -389,9 +404,9 @@ fn test_scalar_mul_by_zero() {
             b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e",
             16,
         )
-            .unwrap(),
+        .unwrap(),
     )
-        .unwrap(); // p - 1
+    .unwrap(); // p - 1
     let coeff = BigInt::zero();
     let result = coeff * &fe;
     assert_eq!(*result.num(), BigInt::zero());
