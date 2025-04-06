@@ -1,7 +1,7 @@
 use num_bigint::BigInt;
 use num_traits::{One, Signed, Zero};
 use std::fmt;
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub, Neg};
 
 // Defines the secp256k1 prime (p = 2^256 - 2^32 - 977) as a global constant.
 // This is the modulus for our finite field F_p.
@@ -78,6 +78,13 @@ impl FieldElement {
             let num = self.num.modpow(&reduced_exp, Self::prime());
             FieldElement { num }
         }
+    }
+
+    /// Computes the additive inverse of the field element: -a = p - a mod p.
+    pub fn neg(&self) -> FieldElement {
+        let p = Self::prime();
+        let neg_num = (p - &self.num) % p;
+        FieldElement::new(neg_num).unwrap()
     }
 }
 
@@ -178,5 +185,21 @@ impl Div for FieldElement {
     type Output = FieldElement;
     fn div(self, rhs: FieldElement) -> FieldElement {
         &self / &rhs
+    }
+}
+
+/// Implements the unary negation operator (-) for references to `FieldElement`.
+impl<'a> Neg for &'a FieldElement {
+    type Output = FieldElement;
+    fn neg(self) -> FieldElement {
+        self.neg() // Call the neg method directly on the reference
+    }
+}
+
+/// Implements the unary negation operator (-) for owned `FieldElement` values.
+impl Neg for FieldElement {
+    type Output = FieldElement;
+    fn neg(self) -> FieldElement {
+        (&self).neg() // Borrow self and call the neg method
     }
 }

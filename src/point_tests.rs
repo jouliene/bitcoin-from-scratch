@@ -101,9 +101,5 @@ fn test_display_invalid_point() {
     }; // Directly construct invalid point
 
     // Verify the formatted string for invalid state.
-    assert_eq!(
-        invalid_point.to_string(),
-        "Invalid Point",
-        "Should format as 'Invalid Point'"
-    );
+    assert_eq!(invalid_point.to_string(), "Invalid Point");
 }

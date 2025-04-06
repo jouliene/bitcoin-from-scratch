@@ -44,11 +44,88 @@ impl Point {
             }
             (Some(_), None) | (None, Some(_)) => {
                 // One coordinate is None and the other is Some - this is invalid
-                return Err("Invalid point: both coordinates must be Some or both must be None".to_string());
+                return Err(
+                    "Invalid point: both coordinates must be Some or both must be None".to_string(),
+                );
             }
         }
 
         Ok(Point { x, y })
+    }
+
+    /// Creates a point at infinity.
+    pub fn infinity() -> Self {
+        Point::new(None, None).unwrap()
+    }
+
+    /// Checks if the point is the point at infinity.
+    pub fn is_infinity(&self) -> bool {
+        self.x.is_none() && self.y.is_none()
+    }
+
+    /// Adds two points on the secp256k1 elliptic curve.
+    pub fn add(&self, other: &Point) -> Point {
+        if self.is_infinity() {
+            return other.clone();
+        }
+        if other.is_infinity() {
+            return self.clone();
+        }
+
+        let x1 = self.x.as_ref().unwrap();
+        let y1 = self.y.as_ref().unwrap();
+        let x2 = other.x.as_ref().unwrap();
+        let y2 = other.y.as_ref().unwrap();
+
+        if x1 == x2 {
+            if y1 == y2 {
+                // Point doubling: P + P
+                if *y1 == FieldElement::zero() {
+                    return Point::infinity();
+                }
+                // s = (3 * x1^2) / (2 * y1)
+                // x3 = s^2 - 2*x1
+                // y3 = s * (x1 - x3) - y1
+                let three = FieldElement::new(BigInt::from(3)).unwrap();
+                let two = FieldElement::new(BigInt::from(2)).unwrap();
+
+                let x1_squared = x1.pow(BigInt::from(2));
+                let numerator = &three * &x1_squared;
+                let denominator = &two * y1;
+                let s = &numerator / &denominator;
+
+                let s_squared = s.pow(BigInt::from(2));
+                let two_x1 = x1 + x1;
+                let x3 = &s_squared - &two_x1;
+
+                let x1_minus_x3 = x1 - &x3;
+                let s_times_diff = &s * &x1_minus_x3;
+                let y3 = &s_times_diff - y1;
+
+                return Point::new(Some(x3), Some(y3)).unwrap();
+            } else {
+                // P + (-P) = infinity
+                return Point::infinity();
+            }
+        }
+
+        // Regular addition: P + Q where P ≠ Q
+        // s = (y2 - y1) / (x2 - x1)
+        // x3 = s^2 - x1 - x2
+        // y3 = s * (x1 - x3) - y1
+        let numerator = y2 - y1;
+        let denominator = x2 - x1;
+        let s = &numerator / &denominator;
+
+        let s_squared = s.pow(BigInt::from(2));
+        let s_squared_minus_x1 = &s_squared - x1;
+        let x3 = &s_squared_minus_x1 - x2;
+
+        let x1_minus_x3 = x1 - &x3;
+        let s_times_diff = &s * &x1_minus_x3;
+        let y3 = &s_times_diff - y1;
+
+        Point::new(Some(x3), Some(y3)).unwrap()
     }
 }
 

@@ -2,9 +2,9 @@ use crate::finite_fields::FieldElement;
 use num_bigint::BigInt;
 use num_traits::{One, Zero};
 
-//---------------------
+//------------------
 // Constructor Tests
-//---------------------
+//------------------
 
 #[test]
 fn test_new_valid() {
@@ -30,9 +30,9 @@ fn test_new_invalid() {
     assert!(FieldElement::new(BigInt::from(-1)).is_err());
 }
 
-//---------------------
+//-------------
 // Display Test
-//---------------------
+//-------------
 
 #[test]
 fn test_display() {
@@ -43,9 +43,9 @@ fn test_display() {
     assert_eq!(s, expected);
 }
 
-//---------------------
+//--------------
 // Equality Test
-//---------------------
+//--------------
 
 #[test]
 fn test_eq() {
@@ -57,9 +57,9 @@ fn test_eq() {
     assert_ne!(a, c);
 }
 
-//---------------------
+//---------------
 // Addition Tests
-//---------------------
+//---------------
 
 #[test]
 fn test_add_ref_no_wraparound() {
@@ -138,9 +138,9 @@ fn test_add_zero() {
     assert_eq!(&a + &zero, a);
 }
 
-//---------------------
+//------------------
 // Subtraction Tests
-//---------------------
+//------------------
 
 #[test]
 fn test_sub_ref_no_wraparound() {
@@ -271,9 +271,9 @@ fn test_mul_one() {
     assert_eq!(&a * &one, a);
 }
 
-//---------------------
+//---------------
 // Division Tests
-//---------------------
+//---------------
 
 #[test]
 fn test_div_ref_normal() {
@@ -339,9 +339,9 @@ fn test_div_by_zero() {
     let _ = &a / &b; // Should panic with "Division by zero"
 }
 
-//---------------------
+//-----------------------------------------
 // Scalar Multiplication Tests (coeff * fe)
-//---------------------
+//-----------------------------------------
 
 #[test]
 fn test_scalar_mul_no_wraparound() {
@@ -408,4 +408,68 @@ fn test_pow_fermat() {
     let p_minus_one = FieldElement::prime() - BigInt::one();
     let result = fe.pow(p_minus_one);
     assert_eq!(*result.num(), BigInt::one());
+}
+
+//---------------
+// Negation Tests
+//---------------
+
+#[test]
+fn test_neg_normal() {
+    // Test negation of a normal value: -42 = p - 42 mod p.
+    let a = FieldElement::new(BigInt::from(42)).unwrap();
+    let neg_a = -a.clone(); // Using Neg for owned FieldElement
+    let p = FieldElement::prime();
+    let expected = FieldElement::new(p - BigInt::from(42)).unwrap();
+    assert_eq!(neg_a, expected);
+    // Verify a + (-a) = 0
+    assert_eq!(&a + &neg_a, FieldElement::zero());
+}
+
+#[test]
+fn test_neg_ref() {
+    // Test negation of a reference: -42 = p - 42 mod p.
+    let a = FieldElement::new(BigInt::from(42)).unwrap();
+    let neg_a = -&a; // Using Neg for &FieldElement
+    let p = FieldElement::prime();
+    let expected = FieldElement::new(p - BigInt::from(42)).unwrap();
+    assert_eq!(neg_a, expected);
+    // Verify a + (-a) = 0
+    assert_eq!(&a + &neg_a, FieldElement::zero());
+}
+
+#[test]
+fn test_neg_zero() {
+    // Test that the negation of zero is zero: -0 = 0.
+    let zero = FieldElement::zero();
+    let neg_zero = -zero.clone();
+    assert_eq!(neg_zero, FieldElement::zero());
+    // Also test with reference
+    let neg_zero_ref = -&zero;
+    assert_eq!(neg_zero_ref, FieldElement::zero());
+}
+
+#[test]
+fn test_neg_near_boundary() {
+    // Test negation near the field boundary: -(p-1) = 1.
+    let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
+    let num_bigint = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap();
+    let p_minus_one = FieldElement::new(num_bigint).unwrap(); // p - 1
+    let neg_p_minus_one = -p_minus_one.clone();
+    assert_eq!(neg_p_minus_one, FieldElement::one());
+    // Verify (p-1) + (-(p-1)) = 0
+    assert_eq!(&p_minus_one + &neg_p_minus_one, FieldElement::zero());
+}
+
+#[test]
+fn test_double_negation() {
+    // Test that negating twice returns the original value: -(-a) = a.
+    let a = FieldElement::new(BigInt::from(42)).unwrap();
+    let neg_a = -a.clone();
+    let double_neg_a = -neg_a;
+    assert_eq!(double_neg_a, a);
+    // Also test with reference
+    let neg_a_ref = -&a;
+    let double_neg_a_ref = -&neg_a_ref;
+    assert_eq!(double_neg_a_ref, a);
 }
