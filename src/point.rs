@@ -44,11 +44,6 @@ impl Point {
             // Point at infinity
             (None, None) => Ok(Point::Infinity),
 
-            // Invalid: only one coordinate provided
-            (Some(_), None) | (None, Some(_)) => {
-                Err("Invalid point: both coordinates must be Some or both must be None".to_string())
-            }
-
             // Regular point with both coordinates
             (Some(x), Some(y)) => {
                 // Check that the point lies on the curve: y^2 = x^3 + 7
@@ -62,7 +57,8 @@ impl Point {
                         x, y
                     ))
                 }
-            }
+            },
+            _ => Err("Invalid point: both coordinates must be Some or both must be None".to_string()),
         }
     }
 
