@@ -1,15 +1,31 @@
 use crate::finite_fields::FieldElement;
 use num_bigint::BigInt;
+use num_traits::{One, Zero};
 use std::fmt;
-use std::ops::Add;
+use std::ops::{Add, Mul};
 
 // Curve equation y^2 = x^3 + ax + b
 // Constants for secp256k1 curve are a = 0 and b = 7
 // Thus secp256k1 curve becomes y^2 = x^3 + 7
 lazy_static::lazy_static! {
+    // b = 7 in secp256k1 curve y^2 = x^3 + 7
     pub static ref SECP256K1_B: FieldElement = FieldElement::new(BigInt::from(7)).unwrap();
+
+    // just field_element = 2 for short usage
     pub static ref TWO: FieldElement = FieldElement::new(BigInt::from(2)).unwrap();
+
+    // just field_element = 3 for short usage
     pub static ref THREE: FieldElement = FieldElement::new(BigInt::from(3)).unwrap();
+
+    // Group Order N in secp256k1 curve: N * G = Point::Infinity
+    pub static ref SECP256K1_N: BigInt = BigInt::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
+
+    // Generator point G in secp256k1 curve: N * G = Point::Infinity
+    pub static ref G: Point = {
+        let x = FieldElement::new(BigInt::parse_bytes(b"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798", 16).unwrap()).unwrap();
+        let y = FieldElement::new(BigInt::parse_bytes(b"483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8", 16).unwrap()).unwrap();
+        Point::new(Some(x), Some(y)).unwrap()
+    };
 }
 
 /// Represents a point on the secp256k1 elliptic curve.
@@ -45,35 +61,6 @@ impl Point {
                         "Point ({}, {}) is not on the secp256k1 curve",
                         x, y
                     ))
-                }
-            }
-        }
-    }
-
-    /// Creates a point at infinity.
-    pub fn infinity() -> Self {
-        Point::Infinity
-    }
-
-    /// Checks if the point is the point at infinity.
-    pub fn is_infinity(&self) -> bool {
-        matches!(self, Point::Infinity)
-    }
-
-    /// Adds two points on the secp256k1 elliptic curve.
-    pub fn add(&self, other: &Point) -> Point {
-        match (self, other) {
-            (Point::Infinity, _) => other.clone(),
-            (_, Point::Infinity) => self.clone(),
-            (Point::Coordinates { x: x1, y: y1 }, Point::Coordinates { x: x2, y: y2 }) => {
-                if x1 == x2 {
-                    if y1 == y2 {
-                        self.point_double() // P + P
-                    } else {
-                        Point::Infinity  // P + (-P) = infinity
-                    }
-                } else {
-                    self.point_add_distinct(other) // P + Q
                 }
             }
         }
@@ -146,7 +133,21 @@ impl fmt::Display for Point {
 impl<'a> Add<&'a Point> for &Point {
     type Output = Point;
     fn add(self, rhs: &'a Point) -> Point {
-        self.add(rhs)
+        match (self, rhs) {
+            (Point::Infinity, _) => rhs.clone(),
+            (_, Point::Infinity) => self.clone(),
+            (Point::Coordinates { x: x1, y: y1 }, Point::Coordinates { x: x2, y: y2 }) => {
+                if x1 == x2 {
+                    if y1 == y2 {
+                        self.point_double() // P + P
+                    } else {
+                        Point::Infinity // P + (-P) = infinity
+                    }
+                } else {
+                    self.point_add_distinct(rhs) // P + Q
+                }
+            }
+        }
     }
 }
 
@@ -154,6 +155,39 @@ impl<'a> Add<&'a Point> for &Point {
 impl Add for Point {
     type Output = Point;
     fn add(self, rhs: Point) -> Point {
-        Point::add(&self, &rhs)
+        &self + &rhs
+    }
+}
+
+/// Implement Mul for references to Point and BigInt
+impl Mul<&BigInt> for &Point {
+    type Output = Point;
+    fn mul(self, rhs: &BigInt) -> Point {
+        let mut k = rhs % &*SECP256K1_N;
+        if k < BigInt::zero() {
+            k += &*SECP256K1_N; // Handle negative scalars
+        }
+
+        let mut result = Point::Infinity;
+        let mut current = self.clone();
+
+        while k > BigInt::zero() {
+            if &k & BigInt::one() == BigInt::one() {
+                result = &result + &current;
+            }
+            current = &current + &current;
+            k >>= 1;
+        }
+        result
+    }
+}
+
+/// Implement Mul for owned Point and BigInt
+impl Mul<BigInt> for Point {
+    type Output = Point;
+
+    fn mul(self, rhs: BigInt) -> Point {
+        // Delegate to the reference version
+        &self * &rhs
     }
 }
