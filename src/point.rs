@@ -57,8 +57,10 @@ impl Point {
                         x, y
                     ))
                 }
-            },
-            _ => Err("Invalid point: both coordinates must be Some or both must be None".to_string()),
+            }
+            _ => {
+                Err("Invalid point: both coordinates must be Some or both must be None".to_string())
+            }
         }
     }
 

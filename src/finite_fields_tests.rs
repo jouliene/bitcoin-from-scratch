@@ -158,7 +158,7 @@ fn test_sub_ref_with_wraparound() {
     let b = FieldElement::new(BigInt::from(5)).unwrap();
     let c = &a - &b;
     let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
-    let expected = BigInt::parse_bytes(num_hex.as_bytes(),16).unwrap(); // p - 1
+    let expected = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap(); // p - 1
     assert_eq!(*c.num(), expected);
 }
 
@@ -178,7 +178,7 @@ fn test_sub_owned_with_wraparound() {
     let b = FieldElement::new(BigInt::from(5)).unwrap();
     let c = a - b;
     let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e";
-    let expected = BigInt::parse_bytes(num_hex.as_bytes(),16).unwrap(); // p - 1
+    let expected = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap(); // p - 1
     assert_eq!(*c.num(), expected);
 }
 
@@ -220,7 +220,7 @@ fn test_mul_ref_with_wraparound() {
     let two = FieldElement::new(BigInt::from(2)).unwrap();
     let c = &p_minus_one * &two;
     let num_hex = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2d";
-    let expected = BigInt::parse_bytes(num_hex.as_bytes(),16).unwrap(); // p - 2
+    let expected = BigInt::parse_bytes(num_hex.as_bytes(), 16).unwrap(); // p - 2
     assert_eq!(*c.num(), expected);
 }
 
